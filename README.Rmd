@@ -40,20 +40,19 @@ This is a basic example which shows you how to solve a common problem:
 ```{r example}
 library(UMIcountR)
 ## basic example code
+#load reads from the provided example bam file (Smart-seq3 data)
+bam_path <- system.file("extdata", "Smartseq3.TTACCTGCCAGATTCG.bam", package = "UMIcountR", mustWork = TRUE)
+spikedat <- extract_spike_dat(bam_path, match_seq_before_UMI = "GAGCCTGGGGGAACAGGTAGG", match_seq_after_UMI = "CTCGGAGGAGAAA")
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
+After loading the data, we can see the data structure: 
+```{r spikedat}
+str(spikedat)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
 
-You can also embed plots, for example:
-
+Next, we can run the filtering for overrespresented spUMIs:
 ```{r pressure, echo = FALSE}
-plot(pressure)
+overrep <- get_overrepresented_spikes(spikedat, readcutoff = 75)
+overrep$plots[[1]]
 ```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub!

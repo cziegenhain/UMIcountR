@@ -7,9 +7,16 @@ Authors@R:
            role = c("aut", "cre"),
            email = "christoph.ziegenhain@ki.se",
            comment = c(ORCID = "0000-0003-2208-4877"))
-Description: Provide tools for extraction, filtering and analysis of sequencing data containing spike-in UMIs.
+Description: Provide tools for extraction, filtering and analysis of sequencing data containing molecular spike-ins.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
+Imports:
+  Rsamtools,
+  data.table,
+  stringdist,
+  ggplot2
+Suggests: 
+    ggrastr

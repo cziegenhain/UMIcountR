@@ -6,7 +6,7 @@
 \alias{UMIcountR-package}
 \title{UMIcountR: tools for spike-in UMI analysis}
 \description{
-Provide tools for extraction, filtering and analysis of sequencing data containing spike-in UMIs.
+Provide tools for extraction, filtering and analysis of sequencing data containing molecular spike-ins.
 }
 \author{
 \strong{Maintainer}: Christoph Ziegenhain \email{christoph.ziegenhain@ki.se} (\href{https://orcid.org/0000-0003-2208-4877}{ORCID})
