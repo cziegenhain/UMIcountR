@@ -2,7 +2,7 @@
 % Please edit documentation in R/UMIcountR-funs.R
 \name{extract_spike_dat}
 \alias{extract_spike_dat}
-\title{extract_spike_dat}
+\title{Load and extract spUMIs from sequencing reads}
 \usage{
 extract_spike_dat(
   bam_path,
@@ -36,14 +36,14 @@ extract_spike_dat(
 returns a data.table with reads, their UMI and the raw & error-corrected spUMI.
 }
 \description{
-extract and parse molecular spike reads from bam file.
+extract_spike_dat is used to extract and parse molecular spike reads from bam files.
 }
 \details{
 The spUMI can be extracted by known position within reads mapping to the molecular spike, when reads are required to map at a specific location (eg. for Smart-seq3 5' reads). In this case, all three arguments spikeUMI_start, spikeUMI_end and fixed_start_pos are required. When the position of the spUMI within reads is variable, provide the parameters match_seq_before_UMI and match_seq_after_UMI to extract the spUMI by matching the known surrounding sequence.
 }
 \examples{
 \dontrun{
-hek_m8_dat <- extract_spike_dat(
+example_dat <- extract_spike_dat(
  bam_path = bam,
  match_seq_before_UMI = "GAGCCTGGGGGAACAGGTAGG",
  match_seq_after_UMI = "CTCGGAGGAGAAA",

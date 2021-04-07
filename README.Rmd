@@ -21,11 +21,6 @@ knitr::opts_chunk$set(
 
 ## Installation
 
-#You can install the released version of UMIcountR from [CRAN](https://CRAN.R-project.org) with:
-
-#``` r
-#install.packages("UMIcountR")
-#```
 
 You can install UMIcountR from [GitHub](https://github.com/) with:
 
@@ -52,7 +47,19 @@ str(spikedat)
 
 
 Next, we can run the filtering for overrespresented spUMIs:
-```{r pressure, echo = FALSE}
+```{r overrepresentation}
 overrep <- get_overrepresented_spikes(spikedat, readcutoff = 75)
 overrep$plots[[1]]
 ```
+
+
+You could also apply directional-adjacency error correction to the Smart-seq3 UMI in the test data:
+```{r ham}
+spikedat[, UB_directional := return_corrected_umi(UX, editham = 1, collapse_mode = "adjacency_directional"), by = BC]
+```
+
+To downsample the copy number of the molecular spikes in your data to a relevant "expression level" of interest, you can use the following function:
+```{r subs}
+spikedat_mean100 <- subsample_recompute(spikedat, mu_nSpikeUMI = 100, threads = 4)
+```
+

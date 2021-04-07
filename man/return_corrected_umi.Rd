@@ -2,7 +2,7 @@
 % Please edit documentation in R/UMIcountR-funs.R
 \name{return_corrected_umi}
 \alias{return_corrected_umi}
-\title{return_corrected_umi}
+\title{Return corrected UMI sequences}
 \usage{
 return_corrected_umi(umi_input, editham = 1, collapse_mode = NULL)
 }
@@ -17,10 +17,10 @@ return_corrected_umi(umi_input, editham = 1, collapse_mode = NULL)
 returns a vector of error-corrected UMIs with same length as input sequences. Implemented collapse algorithms: "adjacency","adjacency_directional","adjacency_singleton","cluster"
 }
 \description{
-perform error correction on input vector of raw UMI sequences
+return_corrected_umi performs error correction on an input vector of raw UMI sequences.
 }
 \details{
-XYZ
+For a description of implemented collapse algorithms, please refer to Ziegenhain, Hendriks et al., 2021.
 }
 \examples{
 \dontrun{

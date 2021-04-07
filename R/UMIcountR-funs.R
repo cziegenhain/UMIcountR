@@ -1,7 +1,7 @@
 # extract_spike_dat -------------------------------------------------------
 
-#' @title extract_spike_dat
-#' @description extract and parse molecular spike reads from bam file.
+#' @title Load and extract spUMIs from sequencing reads
+#' @description extract_spike_dat is used to extract and parse molecular spike reads from bam files.
 #' @param bam_path path to input bam file, must be indexed zUMIs output file
 #' @param spikename name of the geneID for molecular spikes, Default: 'g_diySpike4'
 #' @param spikecontig name of the reference contig for molecular spikes, Default: 'diySpike'
@@ -14,7 +14,7 @@
 #' @details The spUMI can be extracted by known position within reads mapping to the molecular spike, when reads are required to map at a specific location (eg. for Smart-seq3 5' reads). In this case, all three arguments spikeUMI_start, spikeUMI_end and fixed_start_pos are required. When the position of the spUMI within reads is variable, provide the parameters match_seq_before_UMI and match_seq_after_UMI to extract the spUMI by matching the known surrounding sequence.
 #' @examples 
 #' \dontrun{
-#' hek_m8_dat <- extract_spike_dat(
+#' example_dat <- extract_spike_dat(
 #'  bam_path = bam,
 #'  match_seq_before_UMI = "GAGCCTGGGGGAACAGGTAGG",
 #'  match_seq_after_UMI = "CTCGGAGGAGAAA",
@@ -96,13 +96,13 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
 
 # return_corrected_umi ----------------------------------------------------
 
-#' @title return_corrected_umi
-#' @description perform error correction on input vector of raw UMI sequences
+#' @title Return corrected UMI sequences
+#' @description return_corrected_umi performs error correction on an input vector of raw UMI sequences.
 #' @param umi_input input character vector of uncorrected UMI sequences
 #' @param editham edit distance (hamming) used for collapse, Default: 1
 #' @param collapse_mode collapse mode to use, Default: adjacency
 #' @return returns a vector of error-corrected UMIs with same length as input sequences. Implemented collapse algorithms: "adjacency","adjacency_directional","adjacency_singleton","cluster"
-#' @details XYZ
+#' @details For a description of implemented collapse algorithms, please refer to Ziegenhain, Hendriks et al., 2021.
 #' @examples 
 #' \dontrun{
 #' return_corrected_umi(UX_strings, editham = 1, collapse_mode = "adjacency")
@@ -132,16 +132,61 @@ return_corrected_umi <- function(umi_input, editham = 1, collapse_mode = NULL){
 
 
 
-# get_overrepresented_spikes ----------------------------------------------
-
-#' @title get_overrepresented_spikes
-#' @description bla
-#' @param dat 
-#' @return blubb
-#' @details XYZ
+# subsample_recompute -----------------------------------------------------
+#' @title Subsample molecular spikes per cell and recompute hamming distance correction
+#' @description return_corrected_umi performs error correction on an input vector of raw UMI sequences.
+#' @param dat input data.table of loaded spUMI data. Must have BC,UX and spikeUMI_hd2 columns.
+#' @param mu_nSpikeUMI mean expression level of the spUMI to subsample to.
+#' @param threads number of threads to use, Default: 8
+#' @return returns ...
+#' @details For each cell barcode, subsample the number of spUMIs to an expression level of the given mean and recomputes the error corrected UMIs.
 #' @examples 
 #' \dontrun{
-#' get_overrepresented_spikes(...
+#' subsample_recompute(spikedat, mu_nSpikeUMI)
+#' }
+#' @seealso 
+#'  \code{\link[data.table]{data.table-package}}
+#' @rdname subsample_recompute
+#' @export 
+#' @import data.table
+#' @importFrom parallel mclapply
+#'
+subsample_recompute <- function(dat, mu_nSpikeUMI, threads = 8 ){
+  setDTthreads(1, restore_after_fork = FALSE)
+  nspikes_per_bc <- dat[,.(nspikes = length(unique(spikeUMI_hd2))), by = BC]
+  dat <- dat[BC %in% nspikes_per_bc[nspikes >= 0.8*mu_nSpikeUMI]$BC]
+  dat_l <- split(dat, by = "BC")
+  out_l <- parallel::mclapply(dat_l, function(x){
+    nspikes <- abs( round( rnorm(mean=mu_nSpikeUMI,sd=sqrt(mu_nSpikeUMI),n=1) ) )
+    if(nspikes < length(unique(x$spikeUMI_hd2))){
+      spikeIDs <- sample( x = unique(x$spikeUMI_hd2),size = nspikes, replace = FALSE )
+      x_out <- x[spikeUMI_hd2 %in% spikeIDs, c("BC","spikeUMI_hd2","UX") , with = FALSE]
+    }else{
+      x_out <- x[, c("BC","spikeUMI_hd2","UX") , with = FALSE]
+    }
+    x_out[,UB_hd1 := return_corrected_umi(UX, editham = 1), by ="BC"][
+          ,UB_hd2 := return_corrected_umi(UX, editham = 2), by ="BC"]
+    return(x_out)
+  }, mc.cores = threads)
+  out <- rbindlist(out_l)
+  out[, mean_nSpikeUMI := mu_nSpikeUMI]
+  return(out)
+}
+
+
+
+# get_overrepresented_spikes ----------------------------------------------
+
+#' @title Find overrepresented spUMI sequences
+#' @description get_overrepresented_spikes is used to find the spUMIs of overrepresented molecular spikes.
+#' @param dat input data.table of loaded spUMI data. Must have BC and spikeUMI_hd2 columns.
+#' @param readcutoff maximum number of raw reads a spUMI should be observed in, Default: 100
+#' @param nbccutoff maximum number of cell barcodes a spUMI should be observed in, Default: 5
+#' @return returns a list of length 3, where the first list element "plots" contains descriptive plots of chosen filtering cutoffs and the list elements "over_readcutoff" and "over_nbcs" contain the spUMI identities that should be discarded.
+#' @details Visualise filtering plots by accessing the "plots" list element of the output. over_readcutoff = spUMIs that are more abundant than the set cutoff of number of reads. over_nbcs = spUMIs that are observed in more cell barcodes than the set cutoff.
+#' @examples 
+#' \dontrun{
+#' get_overrepresented_spikes(spikedat, readcutoff = 100, nbccutoff = 5)
 #' }
 #' @seealso 
 #'  \code{\link[data.table]{data.table-package}}
@@ -187,18 +232,19 @@ get_overrepresented_spikes <- function(dat, readcutoff = 100, nbccutoff = 5){
 
 
 # plot_spike_distances ----------------------------------------------------
-#' @title get_overrepresented_spikes
-#' @description bla
-#' @param dat 
-#' @return blubb
-#' @details XYZ
+#' @title Plot minimal pairwise distances between spUMIs within / over cells
+#' @description Plot minimal pairwise distances between spUMIs within and over cells to determine the appropriate error-correction edit distance for spUMI sequences
+#' @param dat input data.table of loaded spUMI data. Must have BC and spikeUMI columns.
+#' @param threads number of threads to use for edit distance calculation, Default: 32
+#' @return returns a ggplot object
+#' @details uses hamming distance as the edit distance measure.
 #' @examples 
 #' \dontrun{
-#' get_overrepresented_spikes(...
+#' plot_spike_distances(spikedat)
 #' }
 #' @seealso 
 #'  \code{\link[data.table]{data.table-package}}
-#' @rdname get_overrepresented_spikes
+#' @rdname plot_spike_distances
 #' @export 
 #' @import data.table
 #' @importFrom stringdist stringdistmatrix

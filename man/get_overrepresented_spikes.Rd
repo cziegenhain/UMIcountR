@@ -2,41 +2,31 @@
 % Please edit documentation in R/UMIcountR-funs.R
 \name{get_overrepresented_spikes}
 \alias{get_overrepresented_spikes}
-\alias{plot_spike_distances}
-\title{get_overrepresented_spikes}
+\title{Find overrepresented spUMI sequences}
 \usage{
 get_overrepresented_spikes(dat, readcutoff = 100, nbccutoff = 5)
-
-plot_spike_distances(dat, threads = 32)
 }
 \arguments{
-\item{dat}{}
+\item{dat}{input data.table of loaded spUMI data. Must have BC and spikeUMI_hd2 columns.}
+
+\item{readcutoff}{maximum number of raw reads a spUMI should be observed in, Default: 100}
+
+\item{nbccutoff}{maximum number of cell barcodes a spUMI should be observed in, Default: 5}
 }
 \value{
-blubb
-
-blubb
+returns a list of length 3, where the first list element "plots" contains descriptive plots of chosen filtering cutoffs and the list elements "over_readcutoff" and "over_nbcs" contain the spUMI identities that should be discarded.
 }
 \description{
-bla
-
-bla
+get_overrepresented_spikes is used to find the spUMIs of overrepresented molecular spikes.
 }
 \details{
-XYZ
-
-XYZ
+Visualise filtering plots by accessing the "plots" list element of the output. over_readcutoff = spUMIs that are more abundant than the set cutoff of number of reads. over_nbcs = spUMIs that are observed in more cell barcodes than the set cutoff.
 }
 \examples{
 \dontrun{
-get_overrepresented_spikes(...
-}
-\dontrun{
-get_overrepresented_spikes(...
+get_overrepresented_spikes(spikedat, readcutoff = 100, nbccutoff = 5)
 }
 }
 \seealso{
-\code{\link[data.table]{data.table-package}}
-
 \code{\link[data.table]{data.table-package}}
 }
