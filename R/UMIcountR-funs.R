@@ -33,9 +33,9 @@
 #' 
 extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig = "diySpike",
                               spikeUMI_start = NULL , spikeUMI_end = NULL, fixed_start_pos = NULL,
-                              match_seq_before_UMI = NULL, match_seq_after_UMI = NULL){
+                              match_seq_before_UMI = NULL, match_seq_after_UMI = NULL, spikeUMI_length = NULL){
   idxst <- Rsamtools::idxstatsBam(bam_path)
-  reflen <- idxst[idxst$seqnames=="diySpike",]$seqlength
+  reflen <- idxst[idxst$seqnames==spikecontig,]$seqlength
   taglist <- c("BC", "QU", "UX", "UB","GE")
   whatlist <- c("rname","pos","cigar","seq")
   
@@ -74,8 +74,6 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
           , TSSseq := paste0(TSSseq,match_seq_before_UMI)][
             , seqAfterUMI := paste0(match_seq_after_UMI,seqAfterUMI)]
     
-    dat <- dat[!is.na(spikeUMI)]
-    
   }else{
     if(is.null(fixed_start_pos) & !is.null(spikeUMI_start)){
       print("Warning: using spike extraction by position in read without fixed read start position!")
@@ -85,9 +83,13 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
         ,seqAfterUMI := substr(seq,spikeUMI_end+1,48)]
   }
   
+  dat <- dat[!is.na(spikeUMI)]
+  if(!is.null(spikeUMI_length)){
+    dat <- dat[nchar(spikeUMI) == spikeUMI_length]
+  }
   
   print("Hamming correct spikeUMIs...")
-  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2), by = "BC"][
+  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 1), by = "BC"][
       , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2), by = "BC"]
   
   return(dat)
@@ -196,7 +198,9 @@ subsample_recompute <- function(dat, mu_nSpikeUMI, threads = 8 ){
 #' @importFrom ggplot2 ggplot theme_classic xlab ylab geom_vline geom_point
 #'
 get_overrepresented_spikes <- function(dat, readcutoff = 100, nbccutoff = 5){
-  if(requireNamespace("ggrastr", quietly = TRUE)){
+  userastr <- FALSE
+  if("ggrastr" %in% rownames(installed.packages())){
+    requireNamespace("ggrastr", quietly = TRUE)
     userastr <- TRUE
   }
   spikeoccurance <- dat[,.(.N, nBCs = length(unique(BC))), by = spikeUMI_hd2]
