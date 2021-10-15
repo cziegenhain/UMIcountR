@@ -1,3 +1,7 @@
+# UMIcountR 0.2.0
+
+* Large change in the error correction utilities. Now builds on BK-Tree datastructure for massive increase in computational efficiency in UMI error corrections. Builds on pybktree package in python called via reticulate.
+
 # UMIcountR 0.1.2
 
 * Add option to subset the length of the spUMI when loading.

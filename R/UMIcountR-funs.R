@@ -114,12 +114,13 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
 #' @rdname return_corrected_umi
 #' @export 
 #' @import data.table
+#' @import reticulate
 #'
 return_corrected_umi <- function(umi_input, editham = 1, collapse_mode = NULL){
   if(is.null(collapse_mode)) collapse_mode = "adjacency"
   if(!collapse_mode %in% c("adjacency","adjacency_directional","adjacency_singleton","cluster")) stop("incorrect collapse_mode")
   
-  ham_maps <- .hammingFilter(umiseq = umi_input, edit = editham, collapse_mode = collapse_mode)
+  ham_maps <- .hammingFilter_bktree(umiseq = umi_input, edit = editham, collapse_mode = collapse_mode)
   
   if(!"falseUMI" %in% colnames(ham_maps)){
     return(umi_input)

@@ -12,7 +12,8 @@ extract_spike_dat(
   spikeUMI_end = NULL,
   fixed_start_pos = NULL,
   match_seq_before_UMI = NULL,
-  match_seq_after_UMI = NULL
+  match_seq_after_UMI = NULL,
+  spikeUMI_length = NULL
 )
 }
 \arguments{
