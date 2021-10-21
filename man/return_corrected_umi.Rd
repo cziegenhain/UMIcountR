@@ -4,7 +4,12 @@
 \alias{return_corrected_umi}
 \title{Return corrected UMI sequences}
 \usage{
-return_corrected_umi(umi_input, editham = 1, collapse_mode = NULL)
+return_corrected_umi(
+  umi_input,
+  editham = 1,
+  collapse_mode = NULL,
+  ngram_split = NULL
+)
 }
 \arguments{
 \item{umi_input}{input character vector of uncorrected UMI sequences}
