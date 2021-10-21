@@ -1,3 +1,6 @@
+# UMIcountR 0.2.1
+Fix implementation of ngram by passing split UMI length correctly.
+
 # UMIcountR 0.2.0
 
 * Large change in the error correction utilities. Now builds on BK-Tree datastructure for massive increase in computational efficiency in UMI error corrections. Builds on pybktree package in python called via reticulate.

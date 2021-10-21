@@ -108,13 +108,17 @@
 #   }
 # }
 
-.hammingFilter_bktree <-function(umiseq, edit=1, collapse_mode = c("adjacency","adjacency_directional","adjacency_singleton","cluster")){
+.hammingFilter_bktree <-function(umiseq, edit=1, collapse_mode = c("adjacency","adjacency_directional","adjacency_singleton","cluster"), ngram_split = NULL){
   # umiseq a vector of umis, one per read
   uc <- data.table(us = umiseq)[, .N, by = "us"] # normal UMI counts
   setorder(uc, us) #order by sequence
   setkey(uc,us) #index by sequence
   
-  umi <- return_dist_frame(uc$us, edit)
+  if(is.null(ngram_split)){
+    ngram_split <- floor(min(nchar(uc$us))/2)
+  }
+  
+  umi <- return_dist_frame(uc$us, edit, ngram_split)
   if(length(umi) == 0){ # leave function as soon as possible if nothing to do.
     return(NULL)
   }

@@ -86,11 +86,14 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
   dat <- dat[!is.na(spikeUMI)]
   if(!is.null(spikeUMI_length)){
     dat <- dat[nchar(spikeUMI) == spikeUMI_length]
+    ngram_split <- floor(spikeUMI_length/2)
+  }else{
+    ngram_split = NULL
   }
   
   print("Hamming correct spikeUMIs...")
-  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 1), by = "BC"][
-      , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2), by = "BC"]
+  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 1, ngram_split), by = "BC"][
+      , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2, ngram_split), by = "BC"]
   
   return(dat)
 }
@@ -116,11 +119,11 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
 #' @import data.table
 #' @import reticulate
 #'
-return_corrected_umi <- function(umi_input, editham = 1, collapse_mode = NULL){
+return_corrected_umi <- function(umi_input, editham = 1, collapse_mode = NULL, ngram_split = NULL){
   if(is.null(collapse_mode)) collapse_mode = "adjacency"
   if(!collapse_mode %in% c("adjacency","adjacency_directional","adjacency_singleton","cluster")) stop("incorrect collapse_mode")
   
-  ham_maps <- .hammingFilter_bktree(umiseq = umi_input, edit = editham, collapse_mode = collapse_mode)
+  ham_maps <- .hammingFilter_bktree(umiseq = umi_input, edit = editham, collapse_mode = collapse_mode, ngram_split = ngram_split)
   
   if(!"falseUMI" %in% colnames(ham_maps)){
     return(umi_input)
