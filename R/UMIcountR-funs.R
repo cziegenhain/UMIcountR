@@ -92,8 +92,8 @@ extract_spike_dat <- function(bam_path, spikename = "g_diySpike4", spikecontig =
   }
   
   print("Hamming correct spikeUMIs...")
-  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 1, ngram_split), by = "BC"][
-      , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2, ngram_split), by = "BC"]
+  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI, editham = 1, ngram_split = ngram_split), by = "BC"][
+      , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI, editham = 2, ngram_split = ngram_split), by = "BC"]
   
   return(dat)
 }
