@@ -164,6 +164,7 @@ subsample_recompute <- function(dat, mu_nSpikeUMI, threads = 8 ){
   dat_l <- split(dat, by = "BC")
   out_l <- parallel::mclapply(dat_l, function(x){
     nspikes <- abs( round( rnorm(mean=mu_nSpikeUMI,sd=sqrt(mu_nSpikeUMI),n=1) ) )
+    if(nspikes == 0) nspikes <- 1
     if(nspikes < length(unique(x$spikeUMI_hd2))){
       spikeIDs <- sample( x = unique(x$spikeUMI_hd2),size = nspikes, replace = FALSE )
       x_out <- x[spikeUMI_hd2 %in% spikeIDs, c("BC","spikeUMI_hd2","UX") , with = FALSE]

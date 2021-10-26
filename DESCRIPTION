@@ -1,6 +1,6 @@
 Package: UMIcountR
 Title: tools for spike-in UMI analysis
-Version: 0.2.1
+Version: 0.2.2
 Authors@R:
     person(given = "Christoph",
            family = "Ziegenhain",

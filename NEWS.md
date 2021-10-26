@@ -1,3 +1,6 @@
+# UMIcountR 0.2.2
+Handle some unexpected situations.
+
 # UMIcountR 0.2.1
 Fix implementation of ngram by passing split UMI length correctly.
 

@@ -114,6 +114,10 @@
   setorder(uc, us) #order by sequence
   setkey(uc,us) #index by sequence
   
+  if(nrow(uc) < 2){
+    return(NULL)
+  }
+  
   if(is.null(ngram_split)){
     ngram_split <- floor(min(nchar(uc$us))/2)
   }
