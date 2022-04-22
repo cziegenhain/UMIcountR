@@ -2,6 +2,7 @@
 % Please edit documentation in R/UMIcountR-funs.R
 \name{return_corrected_umi}
 \alias{return_corrected_umi}
+\alias{error_correct_known}
 \title{Return corrected UMI sequences}
 \usage{
 return_corrected_umi(
@@ -10,6 +11,8 @@ return_corrected_umi(
   collapse_mode = NULL,
   ngram_split = NULL
 )
+
+error_correct_known(obs_seqs, known_seqs, editham = 1, set_NA_nonmatch = FALSE)
 }
 \arguments{
 \item{umi_input}{input character vector of uncorrected UMI sequences}
@@ -17,21 +20,38 @@ return_corrected_umi(
 \item{editham}{edit distance (hamming) used for collapse, Default: 1}
 
 \item{collapse_mode}{collapse mode to use, Default: adjacency}
+
+\item{obs_seqs}{input character vector of uncorrected observed sequences}
+
+\item{known_seqs}{input character vector of expected known sequences}
+
+\item{set_NA_nonmatch}{set sequences that do not match to known list after error correction to NA?}
 }
 \value{
 returns a vector of error-corrected UMIs with same length as input sequences. Implemented collapse algorithms: "adjacency","adjacency_directional","adjacency_singleton","cluster"
+
+returns a vector of error-corrected sequences with same length as input sequences.
 }
 \description{
 return_corrected_umi performs error correction on an input vector of raw UMI sequences.
+
+error_correct_known performs error correction on an input vector of raw sequences and a list of expected sequences.
 }
 \details{
 For a description of implemented collapse algorithms, please refer to Ziegenhain, Hendriks et al., 2021.
+
+NA
 }
 \examples{
 \dontrun{
 return_corrected_umi(UX_strings, editham = 1, collapse_mode = "adjacency")
 }
+\dontrun{
+error_correct_known(in_strings, known_strings, editham = 1)
+}
 }
 \seealso{
+\code{\link[data.table]{data.table-package}}
+
 \code{\link[data.table]{data.table-package}}
 }

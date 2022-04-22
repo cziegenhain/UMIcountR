@@ -7,6 +7,12 @@
 
 <!-- badges: end -->
 
+## Molecular Spikes
+
+For information on obtaining molecular spikes, reference fasta and more,
+please visit the [molecular spikes GitHub
+repo](https://github.com/sandberg-lab/molecularSpikes).
+
 ## Installation
 
 You can install UMIcountR from [GitHub](https://github.com/) with:
@@ -18,16 +24,23 @@ devtools::install_github("cziegenhain/UMIcountR")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This is a basic example which shows you how to load and analyse some
+molecular spikes data:
 
 ``` r
 library(UMIcountR)
 ## basic example code
 #load reads from the provided example bam file (Smart-seq3 data)
 bam_path <- system.file("extdata", "Smartseq3.TTACCTGCCAGATTCG.bam", package = "UMIcountR", mustWork = TRUE)
+
+#in the case of the simple v1 molecular spike
 spikedat <- extract_spike_dat(bam_path, match_seq_before_UMI = "GAGCCTGGGGGAACAGGTAGG", match_seq_after_UMI = "CTCGGAGGAGAAA")
 #> [1] "Reading in data from bam file..."
 #> [1] "Hamming correct spikeUMIs..."
+
+#in the case of the complex molecular spikes set
+data("molspike_barcodes_infos_fivep_final")
+#spikedat <- extract_complex_spike_dat(bam_path, bc_df = spike_info, max_pattern_dist = 3)
 ```
 
 After loading the data, we can see the data structure:
@@ -74,3 +87,8 @@ function:
 ``` r
 spikedat_mean100 <- subsample_recompute(spikedat, mu_nSpikeUMI = 100, threads = 4)
 ```
+
+## Reference
+
+Molecular spikes: a gold standard for single-cell RNA counting
+<https://www.nature.com/articles/s41592-022-01446-x>

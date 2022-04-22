@@ -1,3 +1,7 @@
+# UMIcountR 0.5.0
+* new functions to process complex molecular spike-in set
+* add complex spike-in set barcode annotation (`molspike_barcodes_infos_fivep_final`)
+
 # UMIcountR 0.2.2
 Handle some unexpected situations.
 

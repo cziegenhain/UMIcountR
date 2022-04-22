@@ -1,6 +1,114 @@
+
+# extract_complex_spike_dat -----------------------------------------------
+#' @title Load and extract spUMIs from sequencing reads with complex molecular spikes set (5')
+#' @description extract_complex_spike_dat is used to extract and parse molecular spike reads from bam files.
+#' @param bam_path path to input bam file, must be indexed zUMIs output file
+#' @param bc_df data.frame containing expected spike-in names & barcodes
+#' @param spike_groundtruth data.table containing all known spike-in molecules (NOT IMPLEMENTED yet) Default: NULL
+#' @param max_pattern_dist number of sequencing errors allowed in the sequence pattern recognition used to extract barcode & spUMIs. Default:1
+#' @param cores number of CPU cores used. Default: 12
+#' @param min_mapq_value minimum MAPQ mapping quality (default only uniquely aligned reads). Default: 255
+#' @param fixed_start_pos require fixed starting position of BC/spUMI sequence in the read (given as integer). Default: NULL
+#' @return returns a data.table with reads, their UMI and the raw & error-corrected spUMI for each spike-in sequence and barcode.
+#' @details  Barcodes are error corrected allowing 1 hamming distance.
+#' @examples 
+#' \dontrun{
+#' example_dat <- extract_complex_spike_dat(
+#'  bam_path = bam,
+#'  bc_df = spike_info,
+#'  max_pattern_dist = 2,
+#'  cores = 11
+#' )
+#' }
+#' @seealso 
+#'  \code{\link[Rsamtools]{BamInput}},\code{\link[Rsamtools]{ScanBamParam}}
+#'  \code{\link[data.table]{data.table-package}}
+#' @rdname extract_complex_spike_dat
+#' @export 
+#' @importFrom Rsamtools idxstatsBam ScanBamParam scanBam
+#' @importFrom GenomicRanges GRanges
+#' @importFrom IRanges IRanges
+#' @importFrom parallel mclapply
+#' @import data.table
+#' 
+
+extract_complex_spike_dat <- function(bam_path, bc_df, 
+                                      spike_groundtruth = NULL, max_pattern_dist = 1, 
+                                      cores = 12, min_mapq_value = 255, fixed_start_pos = NULL){
+  
+  pattern_df <- data.table(
+    spikeID = paste0("molspike_",1:11),
+    recognition_seq = c("GCCTCTCCCCGGGGCGATTCCTCCGTC","TCCTCGGCGGCCCGCCTGGTCGCTCAA","GGCTGAACTACTCCGACTACTTGTCCT","CGAATACTATCACATGAAGACGCGAAT","AGGGATCCAATCGCATAGCACACCGAC","CTAGGGAACAGATGGATCCTAATTTCG","AGAGATATATAGGTGGCATAATCTCTT","CACTAAGCTGAAACAGAATCAGCAGAT","TAGCGAATACTGAGCAGACTACGTTGG", "TGGGCTTTTCCTAAAACCCTAGTCGGT","GGGGTGAGCATGCACACTATTGGGGAG")
+  )
+  
+  idxst <- Rsamtools::idxstatsBam(bam_path)
+  idxst <- idxst[idxst$mapped>0,]
+  available_spikes <- intersect(pattern_df$spikeID, idxst$seqnames)
+  if(is.null(available_spikes) | length(available_spikes) == 0 ){
+    print("Could not match the provided spike IDs to the contigs of the bam file.")
+    return(NULL)
+  }
+  
+  idxst <- idxst[idxst$seqnames %in% available_spikes,]
+  #reflen <- idxst[idxst$seqnames==spikecontig,]$seqlength
+  taglist <- c("BC", "QU", "UX", "UB","GE")
+  whatlist <- c("rname","pos","cigar","seq")
+  
+  dat <- parallel::mclapply(available_spikes, function(sp) {
+    parms <- Rsamtools::ScanBamParam(tag=taglist,
+                                     what=whatlist,
+                                     tagFilter = list(GE = available_spikes),
+                                     mapqFilter = min_mapq_value,
+                                     which = GenomicRanges::GRanges(seqnames = sp, ranges = IRanges::IRanges(1,idxst[idxst$seqnames == sp, ]$seqlength)))
+    print("Reading in data from bam file...")
+    dat <- Rsamtools::scanBam(file = bam_path, param = parms)
+    dat <- data.table::data.table(
+      contig = dat[[1]]$rname,
+      pos = dat[[1]]$pos,
+      CIGAR = dat[[1]]$cigar,
+      seq = as.character(dat[[1]]$seq),
+      BC = dat[[1]]$tag$BC,
+      QU = dat[[1]]$tag$QU,
+      UX = dat[[1]]$tag$UX,
+      UB = dat[[1]]$tag$UB
+    )
+    dat <- dat[!UX==""] #escape internal reads for Smart-seq3
+    dat[, spikeID := sp][ # set spike
+      , c("split_point", "match_dist") := stringdist::afind(x = seq, pattern = pattern_df[spikeID==sp]$recognition_seq, method = "hamming", nthread = 1)[c("location","distance")]][ # find where 
+        , seq_before_spike := substr(seq,1,unique(split_point)-1), by = split_point][
+          , seq := NULL]
+    
+    dat <- dat[nchar(seq_before_spike)>=21][match_dist <= max_pattern_dist]
+    dat[, seq_BCUMI := substr(seq_before_spike, nchar(seq_before_spike)-20, nchar(seq_before_spike)), by = seq_len(nrow(dat))][
+      , seq_before_spike := NULL][
+        , spikeBC_raw := substr(seq_BCUMI,1,7)][
+          , spikeUMI_raw := substr(seq_BCUMI,8,21)][
+            , spikeBC_correct := UMIcountR::bc_correct(spikeBC_raw, bc_list=bc_df[spikeID == sp]$bc, maxdist = 1, cores = 1)]
+    dat <- dat[spikeBC_correct %in% bc_df[spikeID == sp]$bc]
+    return(dat)
+  }, mc.cores = cores, mc.preschedule =F) # no preschedule because some jobs may fail (eg. not enough counts in a spike)
+  dat <- rbindlist(dat[sapply(dat, is.data.table)])
+  
+  if(!is.null(fixed_start_pos)){
+    dat <- dat[pos == fixed_start_pos]
+  }
+  
+  
+  dat <- dat[!is.na(spikeUMI_raw)]
+  
+  spikeUMI_length <- unique(nchar(dat$spikeUMI_raw))
+  ngram_split <- floor(spikeUMI_length/2)
+  
+  print("Hamming correct spikeUMIs...")
+  dat[, spikeUMI_hd1 := UMIcountR::return_corrected_umi(spikeUMI_raw, editham = 1, ngram_split = ngram_split), by = c("BC","spikeID","spikeBC_correct")][
+      , spikeUMI_hd2 := UMIcountR::return_corrected_umi(spikeUMI_raw, editham = 2, ngram_split = ngram_split), by = c("BC","spikeID","spikeBC_correct")]
+  
+  return(dat)
+}
+
 # extract_spike_dat -------------------------------------------------------
 
-#' @title Load and extract spUMIs from sequencing reads
+#' @title Load and extract spUMIs from sequencing reads with v1 molecular spikes (5' or 3')
 #' @description extract_spike_dat is used to extract and parse molecular spike reads from bam files.
 #' @param bam_path path to input bam file, must be indexed zUMIs output file
 #' @param spikename name of the geneID for molecular spikes, Default: 'g_diySpike4'
@@ -290,4 +398,105 @@ plot_spike_distances <- function(dat, threads = 32){
     ggplot2::geom_vline(xintercept = 2.5, linetype = 'dashed') + 
     ggplot2::xlim(0,15)
   return(p_min_dist)
+}
+
+
+
+# error_correct_known -----------------------------------------------------
+
+#' @title Error correct BC/UMI sequences with known list
+#' @description error_correct_known performs error correction on an input vector of raw sequences and a list of expected sequences.
+#' @param obs_seqs input character vector of uncorrected observed sequences
+#' @param known_seqs input character vector of expected known sequences
+#' @param editham edit distance (hamming) used for collapse, Default: 1
+#' @param set_NA_nonmatch set sequences that do not match to known list after error correction to NA?
+#' @return returns a vector of error-corrected sequences with same length as input sequences. 
+#' @details NA
+#' @examples 
+#' \dontrun{
+#' error_correct_known(in_strings, known_strings, editham = 1)
+#' }
+#' @seealso 
+#'  \code{\link[data.table]{data.table-package}}
+#' @rdname return_corrected_umi
+#' @export 
+#' @import data.table
+#' @import reticulate
+#'
+error_correct_known <- function(obs_seqs, known_seqs, editham = 1, set_NA_nonmatch = FALSE){
+  
+  obscounts <- data.table(seq = obs_seqs)[, .N, by = "seq"] # normal UMI counts
+  setorder(obscounts, seq) #order by sequence
+
+  dists <- return_dist_known(obscounts$seq, known_seqs, editham)
+  if(length(umi) > 0){ # only do stuff if there is something to do.
+    dists <- as.data.table(matrix(unlist(lapply(dists, unlist)), byrow = T, ncol = 3)) #reformat list into correct shape
+    setnames(dists, c("trueseq","dist","obsseq"))
+    dists[, dist := as.integer(dist)]
+    dists <- dists[dist != 0]
+    
+    #kill ambiguous
+    dups <- duplicated(dists$obsseq)
+    if(any(dups)){
+      dups_remove <- dists$obsseq[which(dups)]
+      dists <- dists[! obsseq %in% dups_remove]
+    }
+    
+    out_dt <- data.table(raw = obs_seqs)
+    out_dt <- merge(out_dt, dists, by.x = "raw", by.y = "obsseq", all.x = TRUE)
+    out_dt[,dist := NULL]
+    out_dt[,out := ifelse(is.na(trueseq),raw,trueseq)]
+  }else{
+    out_dt[,out := obs_seqs]
+  }
+  
+  if(set_NA_nonmatch){
+    out_dt[, out := ifelse(out %in% known_seqs, out, NA)]
+  }
+  
+  return(out_dt$out)
+}
+
+
+# bc_correct --------------------------------------------------------------
+#' @title Error correct BC sequences with known list
+#' @description bc_correct performs error correction on an input vector of raw sequences and a list of expected sequences.
+#' @param inbcs input character vector of uncorrected BC sequences
+#' @param bc_list input character vector of expected known BC sequences
+#' @param maxdist edit distance (hamming) used for collapse, Default: 1
+#' @param cores Number of CPU cores to use. Default: 1
+#' @return returns a vector of error-corrected sequences with same length as input sequences. 
+#' @details NA
+#' @examples 
+#' \dontrun{
+#' bc_correct(in_strings, known_strings, maxdist = 1)
+#' }
+#' @seealso 
+#'  \code{\link[data.table]{data.table-package}}
+#' @rdname bc_correct
+#' @export 
+#' @import data.table
+#' @importFrom stringdist stringdistmatrix
+#'
+bc_correct <- function(inbcs, bc_list, maxdist = 1, cores = 1){
+  dists <- stringdist::stringdistmatrix(unique(inbcs),bc_list,method="hamming", nthread = cores)
+  dists <- setDT(data.frame(dists))
+  colnames(dists) <- bc_list
+  dists[, inBC := unique(inbcs)]
+  dists <- suppressWarnings(data.table::melt(dists,id.vars = "inBC", variable.factor = F,variable.name="trueBC", value.name="hamming"))
+  dists <- dists[hamming<=maxdist][hamming>0]
+  #remove unused BCs that fit equally well to two true parent BCs
+  dists[    , min_ham :=  min(hamming), by = inBC][
+    , n_false :=  length(hamming), by = inBC][
+      , n_min := sum(hamming==min_ham), by =  inBC]
+  dists <- dists[n_min == 1][hamming==min_ham]
+  dists[, min_ham := NULL][
+    , n_false := NULL][
+      , n_min := NULL]
+  outbcs <- data.table(inBC = inbcs)
+  outbcs[,order_idx := seq(.N)]
+  outbcs <- merge(outbcs, dists, by = "inBC", all.x = TRUE)
+  outbcs[, out := ifelse(is.na(trueBC), inBC, trueBC)]
+  setorder(outbcs, order_idx)
+  return(outbcs$out)
 }

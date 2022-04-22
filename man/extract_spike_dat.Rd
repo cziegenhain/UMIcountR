@@ -2,7 +2,7 @@
 % Please edit documentation in R/UMIcountR-funs.R
 \name{extract_spike_dat}
 \alias{extract_spike_dat}
-\title{Load and extract spUMIs from sequencing reads}
+\title{Load and extract spUMIs from sequencing reads with v1 molecular spikes (5' or 3')}
 \usage{
 extract_spike_dat(
   bam_path,
