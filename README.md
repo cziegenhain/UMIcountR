@@ -91,4 +91,4 @@ spikedat_mean100 <- subsample_recompute(spikedat, mu_nSpikeUMI = 100, threads = 
 ## Reference
 
 Molecular spikes: a gold standard for single-cell RNA counting
-<https://www.nature.com/articles/s41592-022-01446-x>
+<[https://www.nature.com/articles/s41592-022-01446-x](https://www.nature.com/articles/s41592-022-01446-x)>
